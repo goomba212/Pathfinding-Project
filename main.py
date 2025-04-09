@@ -92,15 +92,37 @@ class Pathfinder:
     
     def getJunctions(self):
         junctions : list = []
+        adjecentCells : list =  []
         for i in range(len(self.emptyCells)):
             #0 : right, 1 : left, 2 : up, 3 : down 
             cells = self.adjacentCells(self.emptyCells[i])
             if cells[0] and cells[1]:
                 if cells[2] or cells[3]:
                     junctions.append(self.emptyCells[i])
+                    adjecentCells.append(cells)
+
             if cells[2] and cells[3]:
                 if cells[0] or cells[1]:
                     junctions.append(self.emptyCells[i])
+                    adjecentCells.append(cells)
+            
+            if cells[0]^cells[1] and cells[2]^cells[3]: 
+                junctions.append(self.emptyCells[i])
+                adjecentCells.append(cells)
+
+        cellsToRemove : list = []
+        for i in range(len(junctions)):
+            junctionCell : tuple = junctions[i] 
+            cells : list = [False, False, False, False]
+
+            if (junctionCell[0]-1, junctionCell[1]) in junctions or adjecentCells[i][0]: cells[0] = True
+            if (junctionCell[0]+1, junctionCell[1]) in junctions or adjecentCells[i][1]: cells[1] = True
+            if (junctionCell[0], junctionCell[1]-1) in junctions or adjecentCells[i][2]: cells[2] = True
+            if (junctionCell[0], junctionCell[1]+1) in junctions or adjecentCells[i][3]: cells[3] = True
+
+            if cells[0] and cells[1] and cells[2] and cells[3]: cellsToRemove.append(junctionCell)
+            
+        for i in range(len(cellsToRemove)): junctions.remove(cellsToRemove[i])
 
         return junctions
         
@@ -121,6 +143,7 @@ class Pathfinder:
 grid = Grid(40)
 pathfinding = Pathfinder(40, grid.level)
 #print(pathfinding.getRow(0))
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:

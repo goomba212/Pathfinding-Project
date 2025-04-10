@@ -129,53 +129,119 @@ class Pathfinder:
 
         return junctions
 
-    def getClosestCellInDir(self, dir, startingCell : tuple):
-        #0 : right, 1 : left, 2 : up, 3 : down 
+    def getClosestCellInDir(self, startingCell : tuple):
         currentCell = False
         currentPos = 1
-        if dir == 0:
-            while not currentCell:
-                #0 = junction, 1 = wall
-                if (startingCell[0]+currentPos, startingCell[1]) in self.junctions: return (0, currentPos)
-                elif not (startingCell[0]+currentPos, startingCell[1]) in self.emptyCells: return (1, currentPos-1)
-                currentPos += 1
-                
-        if dir == 1:
-            while not currentCell:
-                #0 = junction, 1 = wall
-                if (startingCell[0]-currentPos, startingCell[1]) in self.junctions: return (0, currentPos)
-                elif not (startingCell[0]-currentPos, startingCell[1]) in self.emptyCells: return (1, currentPos-1)
-                currentPos += 1
-                
-        if dir == 2:
-            while not currentCell:
-                #0 = junction, 1 = wall
-                if (startingCell[0], startingCell[1]+currentPos) in self.junctions: return (0, currentPos)
-                elif not (startingCell[0], startingCell[1]+currentPos) in self.emptyCells: return (1, currentPos-1)
-                currentPos += 1
-                
-        if dir == 3:
-            while not currentCell:
-                #0 = junction, 1 = wall
-                if (startingCell[0], startingCell[1]-currentPos) in self.junctions: return (0, currentPos)
-                elif not (startingCell[0], startingCell[1]-currentPos) in self.emptyCells: return (1, currentPos-1)
-                currentPos += 1
 
-        return (0, 0)
+        distances = [0, 0, 0, 0]
+        encounterTypes = [0, 0, 0, 0]
+        
+        while not currentCell: #right
+            #0 = junction, 1 = wall, 2 = target
+            if (startingCell[0]+currentPos, startingCell[1]) in self.junctions: 
+                distances[0] = currentPos 
+                encounterTypes[0] = 0
+                currentCell = True
+            elif (startingCell[0]+currentPos, startingCell[1]) not in self.emptyCells:
+                distances[0] = currentPos-1
+                encounterTypes[0] = 1
+                currentCell = True
+            elif (startingCell[0]+currentPos, startingCell[1]) == self.target:
+                distances[0] = currentPos-1
+                encounterTypes[0] = 2
+                currentCell = True
+                
+            currentPos += 1
+
+        currentCell = False
+        
+        while not currentCell: #left
+            #0 = junction, 1 = wall, 2 = target
+            if (startingCell[0]-currentPos, startingCell[1]) in self.junctions: 
+                distances[1] = currentPos
+                encounterTypes[1] = 0
+                currentCell = True
+            elif (startingCell[0]-currentPos, startingCell[1]) not in self.emptyCells:
+                distances[1] = currentPos-1
+                encounterTypes[1] = 1
+                currentCell = True
+            elif (startingCell[0]-currentPos, startingCell[1]) == self.target:
+                distances[1] = currentPos-1
+                encounterTypes[1] = 2
+                currentCell = True
+                
+            currentPos += 1
+
+        currentCell = False
+        
+        while not currentCell: #up
+            #0 = junction, 1 = wall, 2 = target
+            if (startingCell[0], startingCell[1]+currentPos) in self.junctions: 
+                distances[2] = currentPos
+                encounterTypes[2] = 0
+                currentCell = True
+            elif (startingCell[0], startingCell[1]+currentPos) not in self.emptyCells:
+                distances[2] = currentPos-1
+                encounterTypes[2] = 1
+                currentCell = True
+            elif (startingCell[0], startingCell[1]+currentPos) == self.target:
+                distances[2] = currentPos-1
+                encounterTypes[2] = 2
+                currentCell = True
+                
+            currentPos += 1
+
+        currentCell = False
+        
+        while not currentCell: #down
+            #0 = junction, 1 = wall, 2 = target
+            if (startingCell[0], startingCell[1]-currentPos) in self.junctions:
+                distances[3] = currentPos
+                encounterTypes[3] = 0
+                currentCell = True
+            elif (startingCell[0], startingCell[1]-currentPos) not in self.emptyCells:
+                distances[3] = currentPos-1
+                encounterTypes[3] = 1
+                currentCell = True
+            elif (startingCell[0], startingCell[1]-currentPos) == self.target:
+                distances[3] = currentPos-1
+                encounterTypes[3] = 2
+                currentCell = True
+            
+            currentPos += 1
+
+        return encounterTypes, distances
         
     def createSutibleSpots(self):
         pass
 
     def createPaths(self):
+        #0 : right, 1 : left, 2 : up, 3 : down 
         self.path.clear()
-        for i in range(4):
-            encounterType, distance = self.getClosestCellInDir(i, self.location)
-            
-            if i == 0: self.path.append((self.location, (self.location[0]+distance, self.location[1])))
-            if i == 1: self.path.append((self.location, (self.location[0]-distance, self.location[1])))
-            if i == 2: self.path.append((self.location, (self.location[0], self.location[1]+distance)))
-            if i == 3: self.path.append((self.location, (self.location[0], self.location[1]-distance)))
+        checkList : list = [(self.location)]
+        listPos = 0
+        targetFound = False
+        
+        while not targetFound:
+          if listPos == 0: encounterTypes, distances = self.getClosestCellInDir(self.location)
+          else: encounterTypes, distances = self.getClosestCellInDir(checkList[listPos])
+          onwards = True
+          
+          for i in range(4):
+              if encounterTypes == 0: 
+                if i == 0: checkList.append((self.location[0]+distances[0], self.location[1]))
+                if i == 1: checkList.append((self.location[0]-distances[1], self.location[1]))
+                if i == 2: checkList.append((self.location[0], self.location[1]+distances[2]))
+                if i == 3: checkList.append((self.location[0], self.location[1]-distances[3]))
+              if encounterTypes == 1: onwards = False
+              if encounterTypes == 2: targetFound = True 
                 
+              if onwards:  
+                self.path.append((self.location, (self.location[0]+distances[0], self.location[1])))
+                #self.path.append((self.location, (self.location[0]-distances, self.location[1])))
+          #if i == 2: self.path.append((self.location, (self.location[0], self.location[1]+distances)))
+          #if i == 3: self.path.append((self.location, (self.location[0], self.location[1]-distances)))
+        
     def findPath(self):
         pass
 

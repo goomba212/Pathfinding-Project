@@ -1,95 +1,78 @@
 import pygame
 
-running : bool = True
+pygame.init()
 
-screenWidth : int = 800
-screenHeight : int = 400
+running = True
+screenWidth = 800
+screenHeight = 400
 
 screen = pygame.display.set_mode((screenWidth, screenHeight))
 pygame.display.set_caption("pathfinding-sim")
+
+
 class Grid:
     def __init__(self, cellsize):
         self.cellSize = cellsize
         self.level = [
-        "IIIIIIIIIIIIIIIIIIII",
-        "IOOOOIOOOOOOOOOOOOOI",
-        "IOOOIIIIIIIIIIIIOIOI",
-        "IOOOIOOOOOOOOOOIOIOI",
-        "IOOOIOIIIIOIOOOOOOOI",
-        "IOOOOOOOOOOIOOOOIOII",
-        "IOOOIOOOOOOOOOOOIOOI",
-        "IOIIIOOIIIIIIIOOIOOI",
-        "IOOOOOOOOOOOOOOOIOOI",
-        "IIIIIIIIIIIIIIIIIIII"
+            "IIIIIIIIIIIIIIIIIIII",
+            "IOOOOIOOOOOOOOOOOOOI",
+            "IOOOIIIIIIIIIIIIOIOI",
+            "IOOOIOOOOOOOOOOIOIOI",
+            "IOOOIOIIIIOIOOOOOOOI",
+            "IOOOOOOOOOOIOOOOIOII",
+            "IOOOIOOOOOOOOOOOIOOI",
+            "IOIIIOOIIIIIIIOOIOOI",
+            "IOOOOOOOOOOOOOOOIOOI",
+            "IIIIIIIIIIIIIIIIaIIII"
         ]
-        #column = 10
-        #row == 20
 
     def draw(self):
         for i, row in enumerate(self.level):
             for j, column in enumerate(row):
-                    if column == "I":
-                        pygame.draw.rect(screen, (255, 255, 255), (j*self.cellSize, i*self.cellSize, self.cellSize, self.cellSize))
+                if column == "I":
+                    pygame.draw.rect(screen, (255, 255, 255),
+                                     (j * self.cellSize, i * self.cellSize, self.cellSize, self.cellSize))
 
-    def cellTaken(self, coord : tuple):
-        cell = list(enumerate(self.level[coord[1]]))[coord[0]][1]
-        if cell == "I": return True
-        else: return False
+    def cellTaken(self, coord):
+        return self.level[coord[1]][coord[0]] == "I"
+
 
 class Pathfinder:
     def __init__(self, cellSize, cellmap):
-        self.target : tuple = ()
-        self.location : tuple = ()
-
+        self.target = ()
+        self.location = ()
         self.cellSize = cellSize
         self.cellmap = cellmap
+        self.emptyCells = self.findEmptyCells()
+        self.junctions = self.getJunctions()
+        self.path = []
 
-        self.emptyCells : list  = self.findEmptyCells()
-        self.junctions : list = self.getJunctions()
-        self.path : list = []
-
-    def getRow(self, rowNum : int):
-        row : dict = {}
-        for count, value in enumerate(str(self.cellmap[rowNum])):
-            row.update({count : value})
-        return row
-
-    def cellEmpty(self, coord : tuple):
-        cell = list(enumerate(self.cellmap[coord[1]]))[coord[0]][1]
-        if cell == "I": return False
-        else: return True
+    def cellEmpty(self, coord):
+        return self.cellmap[coord[1]][coord[0]] != "I"
 
     def findEmptyCells(self):
-        emptyCells : list = []
+        empty = []
         for y in range(len(self.cellmap)):
             for x in range(len(self.cellmap[y])):
-                if self.cellEmpty((x, y)): emptyCells.append((x, y))
-        return emptyCells
+                if self.cellEmpty((x, y)):
+                    empty.append((x, y))
+        return empty
 
-    def adjacentCells(self, cell : tuple):
-        #0 : right, 1 : left, 2 : up, 3 : down 
-        cells : list = [False, False, False, False]
-        rowM : dict = {}
-        rowT : dict = {}
-        rowB : dict = {}
-        for count, value in enumerate(str(self.cellmap[cell[1]])):
-            rowM.update({count : value})
+    def adjacentCells(self, cell):
+        x, y = cell
+        cells = [False, False, False, False]  # right, left, up, down
 
-        if cell[0] != 0: 
-            if rowM[cell[0]-1] != "I": cells[0] = True
-            if cell[1] != -1: 
-                for count, value in enumerate(str(self.cellmap[cell[1]+1])):
-                    rowT.update({count : value})
-                if rowT[cell[0]] != "I": cells[2] = True
-
-        if cell[0] != 19: 
-            if rowM[cell[0]+1] != "I": cells[1] = True
-            if cell[1] != 9: 
-                for count, value in enumerate(str(self.cellmap[cell[1]-1])):
-                    rowB.update({count : value})
-                if rowB[cell[0]] != "I": cells[3] = True
+        if x + 1 < 20 and self.cellEmpty((x + 1, y)):
+            cells[0] = True
+        if x - 1 >= 0 and self.cellEmpty((x - 1, y)):
+            cells[1] = True
+        if y - 1 >= 0 and self.cellEmpty((x, y - 1)):
+            cells[2] = True
+        if y + 1 < 10 and self.cellEmpty((x, y + 1)):
+            cells[3] = True
 
         return cells
+        
 
     def getJunctions(self):
         junctions : list = []
@@ -128,162 +111,116 @@ class Pathfinder:
         for i in range(len(cellsToRemove)): junctions.remove(cellsToRemove[i])
 
         return junctions
-
-    def getClosestCellInDir(self, startingCell : tuple):
-        currentCell = False
-        currentPos = 1
-
-        distances = [0, 0, 0, 0]
-        encounterTypes = [0, 0, 0, 0]
         
-        while not currentCell: #right
-            #0 = junction, 1 = wall, 2 = target
-            if (startingCell[0]+currentPos, startingCell[1]) in self.junctions: 
-                distances[0] = currentPos 
-                encounterTypes[0] = 0
-                currentCell = True
-            elif (startingCell[0]+currentPos, startingCell[1]) not in self.emptyCells:
-                distances[0] = currentPos-1
-                encounterTypes[0] = 1
-                currentCell = True
-            elif (startingCell[0]+currentPos, startingCell[1]) == self.target:
-                distances[0] = currentPos-1
-                encounterTypes[0] = 2
-                currentCell = True
-                
-            currentPos += 1
+    def getClosestCellInDir(self, startingCell):
+        x, y = startingCell
+        directions = [(1, 0), (-1, 0), (0, -1), (0, 1)]  # right, left, up, down
+        encounterTypes = [0] * 4
+        distances = [0] * 4
 
-        currentCell = False
-        
-        while not currentCell: #left
-            #0 = junction, 1 = wall, 2 = target
-            if (startingCell[0]-currentPos, startingCell[1]) in self.junctions: 
-                distances[1] = currentPos
-                encounterTypes[1] = 0
-                currentCell = True
-            elif (startingCell[0]-currentPos, startingCell[1]) not in self.emptyCells:
-                distances[1] = currentPos-1
-                encounterTypes[1] = 1
-                currentCell = True
-            elif (startingCell[0]-currentPos, startingCell[1]) == self.target:
-                distances[1] = currentPos-1
-                encounterTypes[1] = 2
-                currentCell = True
-                
-            currentPos += 1
-
-        currentCell = False
-        
-        while not currentCell: #up
-            #0 = junction, 1 = wall, 2 = target
-            if (startingCell[0], startingCell[1]+currentPos) in self.junctions: 
-                distances[2] = currentPos
-                encounterTypes[2] = 0
-                currentCell = True
-            elif (startingCell[0], startingCell[1]+currentPos) not in self.emptyCells:
-                distances[2] = currentPos-1
-                encounterTypes[2] = 1
-                currentCell = True
-            elif (startingCell[0], startingCell[1]+currentPos) == self.target:
-                distances[2] = currentPos-1
-                encounterTypes[2] = 2
-                currentCell = True
-                
-            currentPos += 1
-
-        currentCell = False
-        
-        while not currentCell: #down
-            #0 = junction, 1 = wall, 2 = target
-            if (startingCell[0], startingCell[1]-currentPos) in self.junctions:
-                distances[3] = currentPos
-                encounterTypes[3] = 0
-                currentCell = True
-            elif (startingCell[0], startingCell[1]-currentPos) not in self.emptyCells:
-                distances[3] = currentPos-1
-                encounterTypes[3] = 1
-                currentCell = True
-            elif (startingCell[0], startingCell[1]-currentPos) == self.target:
-                distances[3] = currentPos-1
-                encounterTypes[3] = 2
-                currentCell = True
-            
-            currentPos += 1
+        for i, (dx, dy) in enumerate(directions):
+            dist = 1
+            while True:
+                nx, ny = x + dx * dist, y + dy * dist
+                if (nx, ny) == self.target:
+                    encounterTypes[i] = 2
+                    distances[i] = dist
+                    break
+                elif (nx, ny) in self.junctions:
+                    encounterTypes[i] = 0
+                    distances[i] = dist
+                    break
+                elif (nx, ny) not in self.emptyCells:
+                    encounterTypes[i] = 1
+                    distances[i] = dist - 1
+                    break
+                dist += 1
 
         return encounterTypes, distances
-        
-    def createSutibleSpots(self):
-        pass
 
     def createPaths(self):
-        #0 : right, 1 : left, 2 : up, 3 : down 
         self.path.clear()
-        checkList : list = [(self.location)]
+        checkList = [self.location]
         listPos = 0
+        visited = set()
         targetFound = False
-        
-        while not targetFound:
-          if listPos == 0: encounterTypes, distances = self.getClosestCellInDir(self.location)
-          else: encounterTypes, distances = self.getClosestCellInDir(checkList[listPos])
-          onwards = True
-          
-          for i in range(4):
-              if encounterTypes == 0: 
-                if i == 0: checkList.append((self.location[0]+distances[0], self.location[1]))
-                if i == 1: checkList.append((self.location[0]-distances[1], self.location[1]))
-                if i == 2: checkList.append((self.location[0], self.location[1]+distances[2]))
-                if i == 3: checkList.append((self.location[0], self.location[1]-distances[3]))
-              if encounterTypes == 1: onwards = False
-              if encounterTypes == 2: targetFound = True 
-                
-              if onwards:  
-                self.path.append((self.location, (self.location[0]+distances[0], self.location[1])))
-                #self.path.append((self.location, (self.location[0]-distances, self.location[1])))
-          #if i == 2: self.path.append((self.location, (self.location[0], self.location[1]+distances)))
-          #if i == 3: self.path.append((self.location, (self.location[0], self.location[1]-distances)))
-        
-    def findPath(self):
-        pass
+
+        while not targetFound and listPos < len(checkList):
+            current = checkList[listPos]
+            listPos += 1
+            if current in visited:
+                continue
+            visited.add(current)
+
+            encounterTypes, distances = self.getClosestCellInDir(current)
+
+            for i in range(4):
+                if distances[i] == 0:
+                    continue
+
+                if i == 0:
+                    end = (current[0] + distances[i], current[1])
+                elif i == 1:
+                    end = (current[0] - distances[i], current[1])
+                elif i == 2:
+                    end = (current[0], current[1] - distances[i])
+                elif i == 3:
+                    end = (current[0], current[1] + distances[i])
+
+                self.path.append((current, end))
+
+                if encounterTypes[i] == 2:
+                    targetFound = True
+                    break
+                elif encounterTypes[i] == 0:
+                    checkList.append(end)
 
     def draw(self):
         cellSize = self.cellSize
-        for i in range(len(self.junctions)): pygame.draw.rect(screen, (255, 100, 0), (self.junctions[i][0]*cellSize, self.junctions[i][1]*cellSize, cellSize, cellSize))
-        if self.target != (): pygame.draw.rect(screen, (255, 0, 0), (self.target[0]*cellSize, self.target[1]*cellSize, cellSize, cellSize))
-        if self.location != (): pygame.draw.rect(screen, (0, 0, 255), (self.location[0]*cellSize, self.location[1]*cellSize, cellSize, cellSize))
-        for i in range(len(self.path)):
-            startPos = ((self.path[i][0][0]*cellSize)+cellSize*0.5, (self.path[i][0][1]*cellSize)+cellSize*0.5)
-            endPos = ((self.path[i][1][0]*cellSize)+cellSize*0.5, (self.path[i][1][1]*cellSize)+cellSize*0.5)
-            pygame.draw.line(screen, (0, 255, 0), startPos, endPos)
+        for junction in self.junctions:
+            pygame.draw.rect(screen, (255, 100, 0),
+                             (junction[0] * cellSize, junction[1] * cellSize, cellSize, cellSize))
+
+        if self.target:
+            pygame.draw.rect(screen, (255, 0, 0),
+                             (self.target[0] * cellSize, self.target[1] * cellSize, cellSize, cellSize))
+        if self.location:
+            pygame.draw.rect(screen, (0, 0, 255),
+                             (self.location[0] * cellSize, self.location[1] * cellSize, cellSize, cellSize))
+
+        for start, end in self.path:
+            startPos = (start[0] * cellSize + cellSize / 2, start[1] * cellSize + cellSize / 2)
+            endPos = (end[0] * cellSize + cellSize / 2, end[1] * cellSize + cellSize / 2)
+            pygame.draw.line(screen, (0, 255, 0), startPos, endPos, 2)
+
 
 grid = Grid(40)
 pathfinding = Pathfinder(40, grid.level)
 
 pathfinding.location = (8, 5)
 pathfinding.target = (6, 1)
-
 pathfinding.createPaths()
-#print(pathfinding.getRow(0))
 
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
+    mouseX, mouseY = pygame.mouse.get_pos()
+    gridX = mouseX // pathfinding.cellSize
+    gridY = mouseY // pathfinding.cellSize
+
     if pygame.mouse.get_pressed()[0]:
-        mouseX, mouseY = pygame.mouse.get_pos()
-        if not grid.cellTaken((int((mouseX-(mouseX%pathfinding.cellSize))/pathfinding.cellSize), int((mouseY-(mouseY%pathfinding.cellSize))/pathfinding.cellSize))):
-            pathfinding.location = (int((mouseX-(mouseX%grid.cellSize))/grid.cellSize), int((mouseY-(mouseY%grid.cellSize))/grid.cellSize))
+        if not grid.cellTaken((gridX, gridY)):
+            pathfinding.location = (gridX, gridY)
             pathfinding.createPaths()
 
     if pygame.mouse.get_pressed()[2]:
-        mouseX, mouseY = pygame.mouse.get_pos()
-        if not grid.cellTaken((int((mouseX-(mouseX%pathfinding.cellSize))/pathfinding.cellSize), int((mouseY-(mouseY%pathfinding.cellSize))/pathfinding.cellSize))):
-            pathfinding.target = (int((mouseX-(mouseX%pathfinding.cellSize))/pathfinding.cellSize), int((mouseY-(mouseY%pathfinding.cellSize))/pathfinding.cellSize))
+        if not grid.cellTaken((gridX, gridY)):
+            pathfinding.target = (gridX, gridY)
+            pathfinding.createPaths()
 
-    pygame.Surface.fill(screen, (0, 0, 0))
-    mouseX, mouseY = pygame.mouse.get_pos()
+    screen.fill((0, 0, 0))
     grid.draw()
     pathfinding.draw()
-    print((int((mouseX-(mouseX%pathfinding.cellSize))/pathfinding.cellSize), int((mouseY-(mouseY%pathfinding.cellSize))/pathfinding.cellSize)))
-
     pygame.display.update()
